@@ -9,9 +9,10 @@
     }
 
     .goog-te-combo {
-        position: absolute !important;
+        position: fixed !important;
         left: 50%;
         z-index: 9999999999999999 !important;
+        width: 200px;
     }
 </style>
 
@@ -20,7 +21,7 @@
 
 <script src="https://translate.google.com/translate_a/element.js?cb=translateInitialize"></script>
 <script>
-     function translateInitialize() {
+    function translateInitialize() {
         let trans;
         trans = new google.translate.TranslateElement({
             pageLanguage: 'en',
