@@ -1,3 +1,4 @@
+<?php
 protected static function boot()
     {
         parent::boot();
@@ -7,3 +8,5 @@ protected static function boot()
             }
         });
     }
+
+    ?>
