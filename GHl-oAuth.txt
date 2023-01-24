@@ -1,0 +1,175 @@
+create the app at `https://marketplace.gohighlevel.com`
+after that allow the necessary scopes of the application
+
+after that create the anchor tag as below with your scopes
+
+<a href="https://marketplace.gohighlevel.com/oauth/chooselocation?response_type=code&redirect_uri={{ route('authorization.gohighlevel.callback') }}&client_id={{ get_values_by_id('go_client_id', 1) }}&scope=calendars.readonly campaigns.readonly contacts.write contacts.readonly locations.readonly calendars/events.readonly locations/customFields.readonly locations/customValues.write opportunities.readonly calendars/events.write opportunities.write users.readonly users.write locations/customFields.write"
+                class="form-control btn btn-gradient-primary"> Connect To CRM </a>
+
+
+MUST CHANGE : 
+  1 => redirect_uri to the one you'll define in your app , and it must be same that will be set at the time of application creation in
+   the redirect url field
+
+  2=> select the goHighLevel account you want to authorize to. 
+  3=> ave the refresh and accessTokens to the db to use 
+  4=> you can use the refresh token to get the new access token when the accessToken expires.
+  5=> you can call api with the api accessToken 
+
+
+SetUp : 
+
+in web.php
+
+//for the view where you will show the connect to ghl button
+Route::get('/', [AuthorizationController::class, 'authorization'])->name('index');
+
+//the callback url of the application
+Route::get('/crm/oauth/callback', [AuthorizationController::class, 'goHighLevelCallback'])->name('gohighlevel.callback');
+
+
+AuthorizationController.php
+
+public function goHighLevelCallback(Request $request)
+    {
+        return ghl_token($request);
+    }
+
+
+Helper.php
+
+function ghl_token($request, $type = '')
+{
+
+    $code = $request->code;
+
+    $code  =  ghl_oauth_call($code, $type);
+    $route = '/';
+    $id = login_id();
+
+    if ($code) {
+        if (property_exists($code, 'access_token')) {
+            session()->put('ghl_api_token', $code->access_token);
+            save_custom_setting('access_token', $code->access_token, $id);
+            save_custom_setting('refresh_token', $code->refresh_token, $id);
+            if (empty($type)) {
+
+
+                save_custom_setting('location_id', $code->locationId, $id);
+                save_custom_setting('hash_company_id', $code->hashedCompanyId, $id);
+                save_custom_setting('user_type', $code->userType, $id);
+
+                abort(redirect()->route('dashboard')->with('success', 'Successfully connected to CRM'));
+            }
+        } else {
+            if (property_exists($code, 'error_description')) {
+                if (empty($type)) {
+                    abort(redirect()->route('dashboard')->with('error', $code->error_description));
+                }
+            }
+            return null;
+        }
+    }
+    if (empty($type)) {
+        abort(redirect()->route('dashboard')->with('error', 'Server error'));
+    }
+}
+
+
+if (!function_exists('ghl_oauth_call')) {
+
+    function ghl_oauth_call($code = '', $method = '')
+    {
+        $url = 'https://api.msgsndr.com/oauth/token';
+        $curl = curl_init();
+        $data = [];
+        $data['client_id'] = get_default_settings('go_client_id');
+        $data['client_secret'] = get_default_settings('go_client_secret');
+        $md = empty($method) ? 'code' : 'refresh_token';
+        $data[$md] = $code; // (empty($code)?company_user()->ghl_api_key:$code);
+        $data['grant_type'] = empty($method) ? 'authorization_code' : 'refresh_token';
+        //   $data['grant_type'] =  'authorization_code';
+        $postv = '';
+        $x = 0;
+
+        foreach ($data as $key => $value) {
+            if ($x > 0) {
+                $postv .= '&';
+            }
+            $postv .= $key . '=' . $value;
+            $x++;
+        }
+
+        $curlfields = array(
+            CURLOPT_URL => $url,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_ENCODING => '',
+            CURLOPT_MAXREDIRS => 10,
+            CURLOPT_TIMEOUT => 0,
+            CURLOPT_FOLLOWLOCATION => false,
+            CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+            CURLOPT_CUSTOMREQUEST => 'POST',
+            CURLOPT_POSTFIELDS => $postv,
+        );
+        //dd($url,$postv);
+        curl_setopt_array($curl, $curlfields);
+
+        $response = curl_exec($curl);
+        $response = json_decode($response);
+        curl_close($curl);
+        return $response;
+    }
+}
+
+
+function login_id($id = "")
+{
+    if (!empty($id)) {
+        return $id;
+    }
+    if (session('location_id')) {
+        return session('location_id');
+    }
+
+    if (request()->has('location_id')) {
+        return request()->has('location_id');
+    }
+
+
+
+    $id = auth()->user()->id;
+    if (auth()->user()->role == user_role()) {
+        // done by me at home
+        // return auth()->user()->added_by;
+        return $id;
+    }
+    return $id;
+}
+
+
+{
+    if (empty($id)) {
+        $id = Auth::user()->id;
+    }
+    $loginid = $id;
+    $obj = Setting::where(company_user_fk(), $loginid)->where('key', $key)->first();
+    if (!$obj) {
+        $obj = new Setting();
+        $obj->key = $key;
+        $obj->{company_user_fk()} = $loginid;
+    }
+    $obj->value = $value;
+    $obj->save();
+}
+
+
+
+
+
+
+
+
+
+
+
+
