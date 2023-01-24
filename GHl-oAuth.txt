@@ -165,6 +165,67 @@ function login_id($id = "")
 
 
 
+//updated ghl api call funciton per the auth 2.0
+
+
+function ghl_api_call($url = '', $method = 'get', $data = '', $headers = [], $json = false, $is_v2 = true)
+{
+    $baseurl = 'https://rest.gohighlevel.com/v1/';
+    $bearer = 'Bearer ';
+    if (get_default_settings('oauth_ghl', 'api') != 'oauth') {
+        $token = company_user()->ghl_api_key;
+    } else {
+        $token = get_values_by_id('access_token', login_id());
+        if (empty($token)) {
+            if (session('cronjob')) {
+                return false;
+            }
+            abort(redirect()->intended(route('setting.index')));
+        }
+        $baseurl = 'https://api.msgsndr.com/';
+        $version = get_default_settings('oauth_ghl_version', '2021-04-15');
+        $location = get_values_by_id('location_id', login_id());
+        $headers['Version'] = $version;
+        if ($method == 'get' || $method == 'GET') {
+            $url .= (strpos($url, '?') !== false) ? '&' : '?';
+            if (strpos($url, 'location_id=') === false) {
+                $url .= 'locationId=' . $location;
+            }
+        }
+        if (strpos($url, 'custom') !== false) {
+            $url = 'locations/' . $location . '/' . $url;
+        }
+    }
+    if ($token) {
+        $headers['Authorization'] =  $bearer . $token;
+    }
+    $headers['Content-Type'] = "application/json";
+    $client = new \GuzzleHttp\Client(['http_errors' => false, 'headers' => $headers]);
+    $options = [];
+    if (!empty($data)) {
+        $options['body'] = $data;
+        saveLogger('ghl_data', json_encode($data));
+    }
+    $url1 = $baseurl . $url;
+    $response = $client->request($method, $url1, $options);
+    $bd = $response->getBody()->getContents();
+    $bd = json_decode($bd);
+    if (isset($bd->error) && $bd->error == 'Unauthorized') {
+        request()->code  = get_values_by_id('refresh_token', login_id());
+        if (strpos($bd->message, 'expired') !== false) {
+            $tok = ghl_token(request(), '1');
+            sleep(1);
+            return ghl_api_call($url, $method, $data, $headers, $json, $is_v2);
+        }
+        if (session('cronjob')) {
+            return false;
+        }
+        abort(401, 'Unauthorized');
+    }
+    return $bd;
+}
+
+
 
 
 
