@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Screen Recording Example</title>
+    <script src="https://cdn.tiny.cloud/1/<YOUR_API_KEY>/tinymce/5/tinymce.min.js" referrerpolicy="origin"></script>
+    <script src="https://cdn.WebRTC-Experiment.com/RecordRTC.js"></script>
+</head>
+
+<body>
+    <h1>Screen Recording Example</h1>
+    <button id="start-camera">Start Camera</button>
+    <video id="video" width="320" height="240" autoplay></video>
+    <button id="start-record">Start Recording</button>
+    <button id="stop-record">Stop Recording</button>
+    <a id="download-video" download="test.webm">Download Video</a>
+    <a id="upload-video" href="#">Upload Video</a>
+
+    <script>
+        let camera_button = document.querySelector("#start-camera");
+        let video = document.querySelector("#video");
+        let start_button = document.querySelector("#start-record");
+        let stop_button = document.querySelector("#stop-record");
+        let download_link = document.querySelector("#download-video");
+        let upload_link = document.querySelector("#upload-video");
+
+        let camera_stream = null;
+        let media_recorder = null;
+        let blobs_recorded = [];
+
+        camera_button.addEventListener('click', async function () {
+            camera_stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+            video.srcObject = camera_stream;
+        });
+
+        start_button.addEventListener('click', function () {
+            // set MIME type of recording as video/webm
+            media_recorder = new MediaRecorder(camera_stream, { mimeType: 'video/webm' });
+
+            // event : new recorded video blob available 
+            media_recorder.addEventListener('dataavailable', function (e) {
+                blobs_recorded.push(e.data);
+            });
+
+            // event : recording stopped & all blobs sent
+            media_recorder.addEventListener('stop', function () {
+                // create local object URL from the recorded video blobs
+                let video_local = URL.createObjectURL(new Blob(blobs_recorded, { type: 'video/webm' }));
+                download_link.href = video_local;
+            });
+
+            // start recording with each recorded blob having 1 second video
+            media_recorder.start(1000);
+        });
+
+        stop_button.addEventListener('click', function () {
+            media_recorder.stop();
+        });
+
+        upload_link.addEventListener('click', function (e) {
+            e.preventDefault();
+
+            // create local object URL from the recorded video blobs
+            let video_local = URL.createObjectURL(new Blob(blobs_recorded, { type: 'video/webm' }));
+
+            // create form data
+            let form_data = new FormData();
+            form_data.append('video', new Blob(blobs_recorded, { type: 'video/webm' }));
+            let apikey = "AIzaSyDmbH6vohyEophGTLMX5f34d4orSrp-Qac"
+            //upload to gdrive
+
+            var xhr = new XMLHttpRequest();
+            xhr.open('POST', 'https://www.googleapis.com/upload/drive/v3/files?uploadType=media', true);
+            xhr.setRequestHeader('Authorization', 'Bearer ' + apikey);
+            xhr.setRequestHeader('Content-Type', 'video/webm');
+            xhr.onload = function () {
+                if (this.status == 200) {
+                    alert('Uploaded');
+                }
+            };
+            xhr.send(form_data);
+
+        });
+
+    </script>
+</body>
+
+</html>

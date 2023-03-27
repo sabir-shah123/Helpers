@@ -35,8 +35,6 @@ function updateInvoiceStatus($invoice, $quickbook_invoice = null)
     return $invoice;
 }
 
-
-
 function qbVersion($t = '?')
 {
     return $t . 'minorversion=65';
@@ -126,7 +124,6 @@ function getQBInvoice($id, $paid = false, $ref = '', $balance = 0)
     }
     return $data;
 }
-
 
 function save_qb_tokens($result, $key)
 {
