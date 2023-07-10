@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Camera Screenshot</title>
+    <style>
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            cursor: pointer;
+            margin-right: 10px;
+        }
+
+        button:hover {
+            background-color: #45a049;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="maindiv" style="display: flex;justify-content: space-around;">
+            <video id="video" autoplay></video>
+            <div style="margin-left: 7px;;">
+                <canvas id="canvas"></canvas>
+            </div>
+    </div>
+    <div class="controls">
+        <button id="takePictureBtn">Take Picture</button>
+        <button id="acceptPictureBtn">Accept</button>
+        <button id="clearPictureBtn">Clear</button>
+    </div>
+
+
+    <script>
+        var width = 320;
+        var height = 0;
+        var streaming = false;
+        var video = document.getElementById("video");
+        var canvas = document.getElementById("canvas");
+        var takePictureBtn = document.getElementById("takePictureBtn");
+        var acceptPictureBtn = document.getElementById("acceptPictureBtn");
+        var clearPictureBtn = document.getElementById("clearPictureBtn");
+
+        function startup() {
+            getMediaDevices();
+            videoEventListener();
+            takePictureBtnEventListener();
+            clearPicture();
+        }
+
+        // use navigator to get video media device
+        function getMediaDevices() {
+            navigator.mediaDevices.getUserMedia({ video: true })
+                .then(stream => {
+                    // pass stream object to video src
+                    video.srcObject = stream;
+                    // play video
+                    video.play();
+                })
+                .catch(err => {
+                    alert("Error occurred: " + err);
+                });
+        }
+
+        // add "canplay" event listener on video and set its width & height
+        function videoEventListener() {
+            video.addEventListener("canplay", function (event) {
+                // check if streaming is false (i.e., if we're already streaming or not)
+                if (!streaming) {
+                    // set height of video container
+                    height = video.videoHeight / (video.videoWidth / width);
+
+                    // if height is an invalid number then set height manually
+                    if (isNaN(height)) {
+                        height = width / (4 / 3);
+                    }
+
+                    video.setAttribute("width", width);
+                    video.setAttribute("height", height);
+                    canvas.setAttribute("width", width);
+                    canvas.setAttribute("height", height);
+                    streaming = true;
+                }
+            }, false);
+        }
+
+        // on click of take picture button call takePicture function
+        function takePictureBtnEventListener() {
+            takePictureBtn.addEventListener("click", function (event) {
+                event.preventDefault();
+                takePicture();
+            }, false);
+        }
+
+        // clear picture
+        function clearPicture() {
+            var context = canvas.getContext("2d");
+            context.fillStyle = "#AAA";
+            context.fillRect(0, 0, canvas.width, canvas.height);
+            var data = canvas.toDataURL("image/png");
+        }
+
+        // take picture
+        function takePicture() {
+            var context = canvas.getContext("2d");
+            if (width && height) {
+                canvas.width = width;
+                canvas.height = height;
+                // draw image on canvas captured from video streaming
+                context.drawImage(video, 0, 0, width, height);
+                // encode screenshot captured
+                var data = canvas.toDataURL("image/png");
+            } else {
+                clearPicture();
+            }
+        }
+
+        // convert data URI to blob
+        function dataURItoBlob(dataURI) {
+            var byteString = atob(dataURI.split(",")[1]);
+            var mimeString = dataURI.split(",")[0].split(":")[1].split(";")[0];
+            var ab = new ArrayBuffer(byteString.length);
+            var ia = new Uint8Array(ab);
+            for (var i = 0; i < byteString.length; i++) {
+                ia[i] = byteString.charCodeAt(i);
+            }
+            return new Blob([ab], { type: mimeString });
+        }
+
+        clearPictureBtn.addEventListener("click", function (event) {
+            clearPicture();
+        });
+
+        acceptPictureBtn.addEventListener("click", function (event) {
+            var data = canvas.toDataURL("image/png");
+            var blob = dataURItoBlob(data);
+            console.log(blob); // do something with the blob if needed
+            alert("G Saad Bhai aapki script");
+        });
+
+        // on page load, call startup function
+        window.addEventListener("load", startup, false);
+    </script>
+</body>
+
+</html>
