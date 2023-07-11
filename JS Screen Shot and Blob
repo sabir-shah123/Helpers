@@ -21,13 +21,14 @@
 
 <body>
     <div class="maindiv" style="display: flex;justify-content: space-around;">
-            <video id="video" autoplay></video>
-            <div style="margin-left: 7px;;">
-                <canvas id="canvas"></canvas>
-            </div>
+        <video id="video" autoplay></video>
+        <div style="margin-left: 7px;;">
+            <canvas id="canvas"></canvas>
+        </div>
     </div>
     <div class="controls">
         <button id="takePictureBtn">Take Picture</button>
+        <button id="switchCameraBtn">Switch Camera</button>
         <button id="acceptPictureBtn">Accept</button>
         <button id="clearPictureBtn">Clear</button>
     </div>
@@ -42,10 +43,12 @@
         var takePictureBtn = document.getElementById("takePictureBtn");
         var acceptPictureBtn = document.getElementById("acceptPictureBtn");
         var clearPictureBtn = document.getElementById("clearPictureBtn");
+        var switchCameraBtn = document.getElementById("switchCameraBtn");
 
         function startup() {
             getMediaDevices();
             videoEventListener();
+            // switchCamera();
             takePictureBtnEventListener();
             clearPicture();
         }
@@ -86,6 +89,37 @@
             }, false);
         }
 
+        // switch camera button event listener
+        switchCameraBtn.addEventListener("click", function (event) {
+            switchCamera();
+        }, false);
+
+        // switch camera function
+        // switch camera function
+        function switchCamera() {
+            // Stop the current video stream
+            var stream = video.srcObject;
+            var tracks = stream.getTracks();
+            tracks.forEach(function (track) {
+                track.stop();
+            });
+
+            // Toggle between front and rear camera
+            var videoConstraints = { video: true };
+            if (!video.srcObject || video.srcObject.getVideoTracks()[0].getCapabilities().facingMode.length > 1) {
+                videoConstraints.facingMode = video.srcObject ? (video.srcObject.getVideoTracks()[0].getSettings().facingMode === "environment" ? "user" : "environment") : "environment";
+            }
+
+            // Get media devices with updated video constraints
+            navigator.mediaDevices.getUserMedia(videoConstraints)
+                .then(function (stream) {
+                    video.srcObject = stream;
+                    video.play();
+                })
+                .catch(function (error) {
+                    console.log("Error occurred: " + error);
+                });
+        }
         // on click of take picture button call takePicture function
         function takePictureBtnEventListener() {
             takePictureBtn.addEventListener("click", function (event) {
@@ -139,8 +173,6 @@
             console.log(blob); // do something with the blob if needed
             alert("G Saad Bhai aapki script");
         });
-
-        // on page load, call startup function
         window.addEventListener("load", startup, false);
     </script>
 </body>
